@@ -37,9 +37,12 @@ trait ApiSubset { self =>
     */
   type Value
 
+  type Record
+
   protected implicit def keyCodec: RedisDataCodec[Key]
   protected implicit def fieldCodec: RedisDataCodec[Field]
   protected implicit def valueCodec: RedisDataCodec[Value]
+  protected implicit def recordCodec: RedisRecordCodec[Record]
 
   def execute[A](command: RedisCommand[A]): Result[A]
 

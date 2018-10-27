@@ -1,6 +1,7 @@
 package com.avsystem.commons
 package serialization
 
+import com.avsystem.commons.annotation.explicitGenerics
 import com.avsystem.commons.misc.MacroGenerated
 
 import scala.annotation.implicitNotFound
@@ -24,6 +25,13 @@ trait GenObjectCodec[T] extends GenCodec[T] {
   }
 }
 object GenObjectCodec {
+  @explicitGenerics
+  def readObject[T](input: ObjectInput)(implicit codec: GenObjectCodec[T]): T =
+    codec.readObject(input)
+
+  def writeObject[T](output: ObjectOutput, value: T)(implicit codec: GenObjectCodec[T]): Unit =
+    codec.writeObject(output, value)
+
   def materialize[T]: GenObjectCodec[T] = macro macros.serialization.GenCodecMacros.materialize[T]
 
   def fromApplyUnapplyProvider[T](applyUnapplyProvider: Any): GenObjectCodec[T] =
