@@ -65,11 +65,11 @@ trait KeyedKeysApi extends ApiSubset {
   def persist(key: Key): Result[Boolean] =
     execute(new Persist(key))
   /** Executes [[http://redis.io/commands/pexpire PEXPIRE]] */
-  def pexpire(key: Key, milliseconds: Long): Result[Boolean] =
-    execute(new Pexpire(key, milliseconds))
+  def pexpire(key: Key, millis: Long): Result[Boolean] =
+    execute(new Pexpire(key, millis))
   /** Executes [[http://redis.io/commands/pexpireat PEXPIREAT]] */
-  def pexpireat(key: Key, millisecondsTimestamp: Long): Result[Boolean] =
-    execute(new Pexpireat(key, millisecondsTimestamp))
+  def pexpireat(key: Key, millisTstamp: Long): Result[Boolean] =
+    execute(new Pexpireat(key, millisTstamp))
   /** Executes [[http://redis.io/commands/pttl PTTL]] */
   def pttl(key: Key): Result[Opt[Opt[Long]]] =
     execute(new Pttl(key))
@@ -328,16 +328,16 @@ object SortLimit {
     CommandArg((ce, sl) => ce.add(sl.offset).add(sl.count))
 }
 
-sealed trait SortPattern[+K, +H]
+sealed trait SortPattern[+K, +F]
 case object SelfPattern extends SortPattern[Nothing, Nothing]
 case class KeyPattern[+K](pattern: K) extends SortPattern[K, Nothing]
-case class HashFieldPattern[+K, +H](keyPattern: K, fieldPattern: H) extends SortPattern[K, H]
+case class FieldPattern[+K, +F](keyPattern: K, fieldPattern: F) extends SortPattern[K, F]
 object SortPattern {
-  implicit def SortPatternArg[K: RedisDataCodec, H: RedisDataCodec]: CommandArg[SortPattern[K, H]] =
+  implicit def SortPatternArg[K: RedisDataCodec, F: RedisDataCodec]: CommandArg[SortPattern[K, F]] =
     CommandArg((ce, sp) => ce.add(sp match {
       case SelfPattern => ByteString("#")
       case KeyPattern(pattern) => RedisDataCodec.write(pattern)
-      case HashFieldPattern(keyPattern, fieldPattern) =>
+      case FieldPattern(keyPattern, fieldPattern) =>
         val bsb = new ByteStringBuilder
         bsb.append(RedisDataCodec.write(keyPattern))
         bsb.append(ByteString("->"))

@@ -28,7 +28,7 @@ trait StreamsApiSuite extends CommandsSuite {
     xadd("key", "f" -> "v").get
     val lastId = xadd("key", "f1" -> "v1", "f2" -> "v2").get
     xlen("key").assertEquals(2)
-    xadd("key", List("f1" -> "v1", "f2" -> "v2"), lastId.inc, XMaxlen(1)).assertEquals(lastId.inc)
+    xadd("key", Map("f1" -> "v1", "f2" -> "v2"), lastId.inc, XMaxlen(1)).assertEquals(lastId.inc)
     xlen("key").assert(_ >= 1)
     val entry = XEntry(lastId.inc.inc, Map("f1" -> "v1", "f2" -> "v2"))
     xaddEntry("key", entry, XMaxlen(1, approx = false)).assertEquals(lastId.inc.inc)

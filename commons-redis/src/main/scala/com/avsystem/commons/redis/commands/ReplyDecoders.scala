@@ -5,7 +5,7 @@ import akka.util.ByteString
 import com.avsystem.commons.misc.{NamedEnum, NamedEnumCompanion}
 import com.avsystem.commons.redis.exception.UnexpectedReplyException
 import com.avsystem.commons.redis.protocol._
-import com.avsystem.commons.redis.{NodeAddress, RedisDataCodec}
+import com.avsystem.commons.redis.{NodeAddress, RedisDataCodec, RedisRecordCodec}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -287,13 +287,14 @@ object ReplyDecoders {
       XPendingEntry(XEntryId.parse(id.utf8String), XConsumer(consumer.utf8String), idle, delivered.toInt)
   }
 
-  def multiBulkXEntry[F: RedisDataCodec, V: RedisDataCodec]: ReplyDecoder[XEntry[F, V]] = {
-    case ArrayMsg(IndexedSeq(BulkStringMsg(id), data: ArrayMsg[RedisMsg])) =>
-      XEntry(XEntryId.parse(id.utf8String), flatMultiBulkMap[F, V].apply(data))
+  def multiBulkXEntry[R: RedisRecordCodec]: ReplyDecoder[XEntry[R]] = {
+    case ArrayMsg(IndexedSeq(BulkStringMsg(id), data: ArrayMsg[BulkStringMsg@unchecked]))
+      if data.elements.forall(_.isInstanceOf[BulkStringMsg]) =>
+      XEntry(XEntryId.parse(id.utf8String), RedisRecordCodec[R].read(data))
   }
 
-  def multiBulkXEntriesMap[K: RedisDataCodec, F: RedisDataCodec, V: RedisDataCodec]: ReplyDecoder[BMap[K, Seq[XEntry[F, V]]]] =
-    multiBulkMap(bulk[K], multiBulkSeq(multiBulkXEntry[F, V])) unless {
+  def multiBulkXEntriesMap[K: RedisDataCodec, R: RedisRecordCodec]: ReplyDecoder[BMap[K, Seq[XEntry[R]]]] =
+    multiBulkMap(bulk[K], multiBulkSeq(multiBulkXEntry[R])) unless {
       case NullArrayMsg => Map.empty
     }
 
@@ -303,7 +304,7 @@ object ReplyDecoders {
   val multiBulkXGroupInfo: ReplyDecoder[XGroupInfo] =
     flatMultiBulkMap(bulkUTF8, undecoded).andThen(XGroupInfo)
 
-  def multiBulkXStreamInfo[Entry <: XEntry[_, _]](entryDecoder: ReplyDecoder[Entry]): ReplyDecoder[XStreamInfo[Entry]] =
+  def multiBulkXStreamInfo[Entry <: XEntry[_]](entryDecoder: ReplyDecoder[Entry]): ReplyDecoder[XStreamInfo[Entry]] =
     flatMultiBulkMap(bulkUTF8, undecoded).andThen(XStreamInfo[Entry](_)(entryDecoder))
 
   def multiBulkGroupedSeq[T](size: Int, elementDecoder: ReplyDecoder[T]): ReplyDecoder[Seq[Seq[T]]] = {
@@ -361,6 +362,16 @@ object ReplyDecoders {
 
   def flatMultiBulkMap[A: RedisDataCodec, B: RedisDataCodec]: ReplyDecoder[BMap[A, B]] =
     flatMultiBulkMap(bulk[A], bulk[B])
+
+  def multiBulkRecord[R: RedisRecordCodec]: ReplyDecoder[R] = {
+    case msg: ArrayMsg[BulkStringMsg@unchecked] if msg.elements.forall(_.isInstanceOf[BulkStringMsg]) =>
+      RedisRecordCodec[R].read(msg)
+  }
+
+  def multiBulkRecordOpt[R: RedisRecordCodec]: ReplyDecoder[Opt[R]] =
+    multiBulkRecord[R].andThen(_.opt) unless {
+      case ArrayMsg.Empty => Opt.Empty
+    }
 
   def geoAttributed[A](attributes: GeoradiusAttrs, unattributed: ReplyDecoder[A]): ReplyDecoder[attributes.Attributed[A]] =
     if (attributes.isEmpty)
