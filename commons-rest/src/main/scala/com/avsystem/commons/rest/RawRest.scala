@@ -36,6 +36,7 @@ trait RawRest {
   @multi @tried
   @tagged[Prefix](whenUntagged = new Prefix)
   @paramTag[RestParamTag](defaultTag = new Path)
+  @unmatched("cannot interpret it as prefix method")
   def prefix(
     @methodName name: String,
     @composite parameters: RestParameters,
@@ -45,6 +46,7 @@ trait RawRest {
   @multi @tried
   @tagged[GET]
   @paramTag[RestParamTag](defaultTag = new Query)
+  @unmatched("cannot interpret it as GET method")
   def get(
     @methodName name: String,
     @composite parameters: RestParameters,
@@ -54,6 +56,7 @@ trait RawRest {
   @multi @tried @annotated[FormBody]
   @tagged[BodyMethodTag](whenUntagged = new POST)
   @paramTag[RestParamTag](defaultTag = new BodyField)
+  @unmatched("cannot interpret it as body-taking method")
   def handleForm(
     @methodName name: String,
     @composite parameters: RestParameters,
@@ -63,6 +66,7 @@ trait RawRest {
   @multi @tried
   @tagged[BodyMethodTag](whenUntagged = new POST)
   @paramTag[RestParamTag](defaultTag = new BodyField)
+  @unmatched("cannot interpret it as body-taking method")
   def handle(
     @methodName name: String,
     @composite parameters: RestParameters,
@@ -72,6 +76,7 @@ trait RawRest {
   @multi @tried
   @tagged[BodyMethodTag](whenUntagged = new POST)
   @paramTag[RestParamTag]
+  @unmatched("cannot interpret it as body-taking method with single body param")
   def handleSingle(
     @methodName name: String,
     @composite parameters: RestParameters,
